@@ -97,7 +97,7 @@ NSString * runCommand(NSString* c) {
     if (!theFileString) {
         [self.waitIndicator stopAnimation:@"Hello"];
         NSAlert *alert = [[NSAlert alloc] init];
-        [alert setMessageText:@"Cannot read String File Something Wned Wrong!!"];
+        [alert setMessageText:@"Cannot read String File Something Went Wrong!!"];
         [alert runModal];
         return;
     }
@@ -127,6 +127,9 @@ NSString * runCommand(NSString* c) {
     NSArray * otherLangList = [self.otheLangStringList.string componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     if (otherLangList.count != theEnglishLineList.count) {
         NSLog(@"Count missmatch ");
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert setMessageText:@"Count mismatch!!"];
+        [alert runModal];
         return;
     }
     
