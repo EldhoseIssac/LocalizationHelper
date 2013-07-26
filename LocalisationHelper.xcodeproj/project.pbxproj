@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E76445FC17A23E2100B53ACE /* Application.m in Sources */ = {isa = PBXBuildFile; fileRef = E76445FB17A23E2100B53ACE /* Application.m */; };
 		E7D9D933179F98D200AA33A1 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E7D9D932179F98D200AA33A1 /* Cocoa.framework */; };
 		E7D9D93D179F98D200AA33A1 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E7D9D93B179F98D200AA33A1 /* InfoPlist.strings */; };
 		E7D9D93F179F98D200AA33A1 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E7D9D93E179F98D200AA33A1 /* main.m */; };
@@ -16,6 +17,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		E76445FA17A23E2100B53ACE /* Application.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Application.h; sourceTree = "<group>"; };
+		E76445FB17A23E2100B53ACE /* Application.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Application.m; sourceTree = "<group>"; };
 		E7D9D92F179F98D200AA33A1 /* LocalisationHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocalisationHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E7D9D932179F98D200AA33A1 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		E7D9D935179F98D200AA33A1 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -85,6 +88,8 @@
 				E7D9D944179F98D200AA33A1 /* LHAppDelegate.h */,
 				E7D9D945179F98D300AA33A1 /* LHAppDelegate.m */,
 				E7D9D947179F98D300AA33A1 /* MainMenu.xib */,
+				E76445FA17A23E2100B53ACE /* Application.h */,
+				E76445FB17A23E2100B53ACE /* Application.m */,
 				E7D9D939179F98D200AA33A1 /* Supporting Files */,
 			);
 			path = LocalisationHelper;
@@ -169,6 +174,7 @@
 			files = (
 				E7D9D93F179F98D200AA33A1 /* main.m in Sources */,
 				E7D9D946179F98D300AA33A1 /* LHAppDelegate.m in Sources */,
+				E76445FC17A23E2100B53ACE /* Application.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -304,6 +310,7 @@
 				E7D9D94E179F98D300AA33A1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

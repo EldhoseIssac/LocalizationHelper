@@ -24,19 +24,15 @@
     [savePanel setCanChooseDirectories:NO];
     [savePanel setCanChooseFiles:YES];
     [savePanel setAllowsMultipleSelection:NO];
-    [savePanel setAllowedFileTypes:@[@"storyboard"]];
+    [savePanel setAllowedFileTypes:@[@"storyboard",@"strings"]];
     if ( [savePanel runModal] == NSOKButton )
     {
         [self.waitIndicator startAnimation:@"Hello"];
         self.theFileLocation.stringValue=savePanel.URL.path;
-        __block NSString * theFile = [self.theFileLocation.stringValue lastPathComponent];
-        theFile = [theFile stringByDeletingPathExtension];
+        loadedFileExtension = [self.theFileLocation.stringValue pathExtension];
         __block NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
         NSString * theFolder = [ fldrPath lastPathComponent];
         fldrPath = [fldrPath stringByDeletingLastPathComponent];
-    
-        
-        
         NSMutableArray * tmapArr = [@[] mutableCopy];
         
         NSError *error = nil;
@@ -57,20 +53,26 @@
         if (languageList.count>0) {
             [self.folderComboBox selectItemAtIndex:0];
         }
-        
-        
-        
 
-        
-        fldrPath = [fldrPath stringByAppendingPathComponent:theFolder];
-        theFile = [self.theFileLocation.stringValue stringByDeletingPathExtension];
-        dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            NSString * theGenarateCmd = [NSString stringWithFormat:GenerateStrinFileCmd,theFile,theFile];
-            NSLog(@"%@",theGenarateCmd);
-            runCommand(theGenarateCmd);
+        if ([loadedFileExtension isEqualToString:@"storyboard"]) {
+            __block NSString * theFile = [self.theFileLocation.stringValue lastPathComponent];
+            theFile = [theFile stringByDeletingPathExtension];
+            
+            fldrPath = [fldrPath stringByAppendingPathComponent:theFolder];
+            theFile = [self.theFileLocation.stringValue stringByDeletingPathExtension];
+            dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                NSString * theGenarateCmd = [NSString stringWithFormat:GenerateStrinFileCmd,theFile,theFile];
+                NSLog(@"%@",theGenarateCmd);
+                runCommand(theGenarateCmd);
+                [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
+            });
+
+        }else{
             [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
-        });
+            
+        }
         
+               
     }
 
   
@@ -92,8 +94,12 @@ NSString * runCommand(NSString* c) {
 }
 - (IBAction)loadEnglishStringsClick:(id)sender {
     NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
-   
-    theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF16StringEncoding error:nil];
+    if ([loadedFileExtension isEqualToString:@"storyboard"]) {
+        theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF16StringEncoding error:nil];
+    }else{
+        theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF8StringEncoding error:nil];
+    }
+    
     if (!theFileString) {
         [self.waitIndicator stopAnimation:@"Hello"];
         NSAlert *alert = [[NSAlert alloc] init];
@@ -137,7 +143,7 @@ NSString * runCommand(NSString* c) {
     NSString * aEnglishString;
     NSString * tmpString;
     NSMutableString * theNewFile = [@"" mutableCopy];
-    theEnglishLineList = [@[] mutableCopy];
+    //theEnglishLineList = [@[] mutableCopy];
     int index = 0;
     while ([aScanner isAtEnd] == NO) {
         [aScanner scanUpToString:@"*/" intoString:&tmpString];
@@ -157,42 +163,63 @@ NSString * runCommand(NSString* c) {
     }
     
     self.otheLangStringList.string = theNewFile;
+   if ([loadedFileExtension isEqualToString:@"storyboard"]) {
+       [self.waitIndicator startAnimation:@"Hello"];
+       dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+           
+           NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
+           [theNewFile writeToFile:theFilePath atomically:YES encoding:NSUTF16StringEncoding error:nil];
+           
+           
+           NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+           fldrPath = [fldrPath stringByDeletingLastPathComponent];
+           
+           NSString * selLang = self.folderComboBox.stringValue;
+           
+           NSString * destFolder = [fldrPath stringByAppendingPathComponent:selLang];
+           
+           NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
+           destFolder = [destFolder stringByAppendingPathComponent:theFileName];
+           NSString *source = [self.theFileLocation.stringValue stringByDeletingPathExtension];
+           
+           NSString * gnst =[NSString stringWithFormat:ExportToStoryBoardcmd,source,destFolder,source];
+           NSLog(@"the cmd %@",gnst);
+           
+           runCommand(gnst);
+           [[NSFileManager defaultManager] removeItemAtPath:[source stringByAppendingPathExtension:@"strings"] error:nil];
+           
+           dispatch_async(dispatch_get_main_queue(), ^{
+               self.theFileLocation.stringValue = @"";
+               self.otheLangStringList.string = @"";
+               self.theEnglishStringList.string = @"";
+               loadedFileExtension =@"";
+               [self.waitIndicator stopAnimation:@"Hello"];
+           });
+           
+           
+       });
 
-    [self.waitIndicator startAnimation:@"Hello"];
-    dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+   }else{
+       
+       NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+       fldrPath = [fldrPath stringByDeletingLastPathComponent];
+       
+       NSString * selLang = self.folderComboBox.stringValue;
+       
+       NSString * destFile = [fldrPath stringByAppendingPathComponent:selLang];
+       
+       NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
+       destFile = [[destFile stringByAppendingPathComponent:theFileName] stringByAppendingPathExtension:@"strings"];
+       [theNewFile writeToFile:destFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+       
+       self.theFileLocation.stringValue = @"";
+       self.otheLangStringList.string = @"";
+       self.theEnglishStringList.string = @"";
+       loadedFileExtension =@"";
+   }
+
     
-        NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
-        [theNewFile writeToFile:theFilePath atomically:YES encoding:NSUTF16StringEncoding error:nil];
-        
-        
-        
-        NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
-        fldrPath = [fldrPath stringByDeletingLastPathComponent];
-        
-        NSString * selLang = self.folderComboBox.stringValue;
-        
-        NSString * destFolder = [fldrPath stringByAppendingPathComponent:selLang];
-        
-        NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
-        destFolder = [destFolder stringByAppendingPathComponent:theFileName];
-        NSString *source = [self.theFileLocation.stringValue stringByDeletingPathExtension];
-        
-        NSString * gnst =[NSString stringWithFormat:ExportToStoryBoardcmd,source,destFolder,source];
-        NSLog(@"the cmd %@",gnst);
-        
-        runCommand(gnst);
-        [[NSFileManager defaultManager] removeItemAtPath:[source stringByAppendingPathExtension:@"strings"] error:nil];
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.theFileLocation.stringValue = @"";
-            self.otheLangStringList.string = @"";
-            self.theEnglishStringList.string = @"";
-            [self.waitIndicator stopAnimation:@"Hello"];
-        });
-        
-        
-    });
-     
     
     
 }
@@ -232,6 +259,12 @@ NSString * runCommand(NSString* c) {
     NSString *candidate = [self firstGenreMatchingPrefix: inputString];
     return (candidate ? candidate : inputString);
 }
+- (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)application
+{
+    return YES;
+}
+
+
 
 
 @end

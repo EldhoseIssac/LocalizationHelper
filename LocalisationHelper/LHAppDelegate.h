@@ -16,6 +16,7 @@
     NSPipe * pipe;
     NSArray *languageList;
     __weak NSProgressIndicator *_waitIndicator;
+    NSString * loadedFileExtension;
 }
 
 @property (assign) IBOutlet NSWindow *window;
