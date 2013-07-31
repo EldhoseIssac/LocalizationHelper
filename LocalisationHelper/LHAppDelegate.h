@@ -17,6 +17,7 @@
     NSArray *languageList;
     __weak NSProgressIndicator *_waitIndicator;
     NSString * loadedFileExtension;
+    NSMutableSet * createdFileList;
 }
 
 @property (assign) IBOutlet NSWindow *window;
@@ -28,6 +29,7 @@
 - (IBAction)fileSelector:(id)sender;
 - (IBAction)loadEnglishStringsClick:(id)sender;
 - (IBAction)replaceStringClick:(id)sender;
+- (IBAction)clickedClearFiles:(id)sender;
 
 @property (weak) IBOutlet NSProgressIndicator *waitIndicator;
 @end

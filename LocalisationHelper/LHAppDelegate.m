@@ -122,6 +122,7 @@ NSString * runCommand(NSString* c) {
         [aScanner scanUpToString:@"\"" intoString:&aEnglishString];
         [theEnglishLineList addObject:aEnglishString];
         self.theEnglishStringList.string = [self.theEnglishStringList.string stringByAppendingFormat:@"%@\n",aEnglishString];
+        self.otheLangStringList.string = @"";
       
     }
     [self.waitIndicator stopAnimation:@"Hello"];
@@ -162,7 +163,6 @@ NSString * runCommand(NSString* c) {
         index++;
     }
     
-    self.otheLangStringList.string = theNewFile;
    if ([loadedFileExtension isEqualToString:@"storyboard"]) {
        [self.waitIndicator startAnimation:@"Hello"];
        dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -186,16 +186,13 @@ NSString * runCommand(NSString* c) {
            NSLog(@"the cmd %@",gnst);
            
            runCommand(gnst);
-           [[NSFileManager defaultManager] removeItemAtPath:[source stringByAppendingPathExtension:@"strings"] error:nil];
-           
-           dispatch_async(dispatch_get_main_queue(), ^{
-               self.theFileLocation.stringValue = @"";
-               self.otheLangStringList.string = @"";
-               self.theEnglishStringList.string = @"";
-               loadedFileExtension =@"";
-               [self.waitIndicator stopAnimation:@"Hello"];
-           });
-           
+           if (createdFileList) {
+               [createdFileList addObject:[source stringByAppendingPathExtension:@"strings"]];
+           }
+           else{
+               createdFileList =[NSMutableSet setWithArray:@[[source stringByAppendingPathExtension:@"strings"]]];
+           }
+           [self.waitIndicator stopAnimation:@"Hello"];
            
        });
 
@@ -221,6 +218,19 @@ NSString * runCommand(NSString* c) {
 
     
     
+    
+}
+
+- (IBAction)clickedClearFiles:(id)sender {
+
+    for (NSString * fname in createdFileList.allObjects) {
+        [[NSFileManager defaultManager] removeItemAtPath:fname error:nil];
+    }
+    [createdFileList removeAllObjects];
+    self.theFileLocation.stringValue = @"";
+    self.otheLangStringList.string = @"";
+    self.theEnglishStringList.string = @"";
+    loadedFileExtension =@"";
     
 }
 
