@@ -9,76 +9,19 @@
 #import "LHAppDelegate.h"
 #define GenerateStrinFileCmd @"ibtool --generate-strings-file \"%@.strings\" \"%@.storyboard\""
 #define ExportToStoryBoardcmd @"ibtool --strings-file \"%@.strings\" --write \"%@.storyboard\"  \"%@.storyboard\""
+#define GenerateStingFromMFiles @"find \"%@\" -name \"*.m\" -print0 | xargs -0 genstrings -o \"%@/en.lproj\""
+//find . -name \*.m | xargs genstrings -o en.lproj
+
 
 @implementation LHAppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
+    crntMode = ModeNone;
+    
     // Insert code here to initialize your application
 }
 
-- (IBAction)fileSelector:(id)sender {
-    
-    NSOpenPanel *savePanel=[[NSOpenPanel alloc] init];
-    [savePanel setCanCreateDirectories:NO];
-    [savePanel setCanChooseDirectories:NO];
-    [savePanel setCanChooseFiles:YES];
-    [savePanel setAllowsMultipleSelection:NO];
-    [savePanel setAllowedFileTypes:@[@"storyboard",@"strings"]];
-    if ( [savePanel runModal] == NSOKButton )
-    {
-        [self.waitIndicator startAnimation:@"Hello"];
-        self.theFileLocation.stringValue=savePanel.URL.path;
-        loadedFileExtension = [self.theFileLocation.stringValue pathExtension];
-        __block NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
-        NSString * theFolder = [ fldrPath lastPathComponent];
-        fldrPath = [fldrPath stringByDeletingLastPathComponent];
-        NSMutableArray * tmapArr = [@[] mutableCopy];
-        
-        NSError *error = nil;
-        
-        NSArray *directoryFiles = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:fldrPath error:&error];
-        
-        if(directoryFiles == nil){
-            NSLog(@"%@", [error localizedDescription]);
-            return ;
-        }
-        for (NSString * path in directoryFiles) {
-            if (([path rangeOfString:@".lproj"].location != NSNotFound) && (![path isEqualToString:theFolder])) {
-                [tmapArr addObject:path];
-            }
-        }
-        languageList = [NSArray arrayWithArray:tmapArr];
-        [self.folderComboBox reloadData];
-        if (languageList.count>0) {
-            [self.folderComboBox selectItemAtIndex:0];
-        }
-
-        if ([loadedFileExtension isEqualToString:@"storyboard"]) {
-            __block NSString * theFile = [self.theFileLocation.stringValue lastPathComponent];
-            theFile = [theFile stringByDeletingPathExtension];
-            
-            fldrPath = [fldrPath stringByAppendingPathComponent:theFolder];
-            theFile = [self.theFileLocation.stringValue stringByDeletingPathExtension];
-            dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                NSString * theGenarateCmd = [NSString stringWithFormat:GenerateStrinFileCmd,theFile,theFile];
-                NSLog(@"%@",theGenarateCmd);
-                runCommand(theGenarateCmd);
-                [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
-            });
-
-        }else{
-            [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
-            
-        }
-        
-               
-    }
-
-  
-    //[self runCmd:@"/Users/isletsys/Documents" withArgs:@[@"pwd"]];
-
-}
 #define $UTF8(A) ((NSString*)[NSString stringWithUTF8String:A])
 NSString * runCommand(NSString* c) {
     
@@ -94,11 +37,33 @@ NSString * runCommand(NSString* c) {
 }
 - (IBAction)loadEnglishStringsClick:(id)sender {
     NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
-    if ([loadedFileExtension isEqualToString:@"storyboard"]) {
-        theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF16StringEncoding error:nil];
-    }else{
-        theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF8StringEncoding error:nil];
+    NSString * localizedPath;
+    NSError * aErr;
+    switch (crntMode) {
+        case ModeNone:
+            return;
+            break;
+        case ModeMFiles:
+            localizedPath = [self.theFileLocation.stringValue stringByAppendingPathComponent:@"en.lproj/Localizable.strings"];
+            theFileString = [NSString stringWithContentsOfFile:localizedPath encoding:NSUTF16StringEncoding error:&aErr];
+            if (aErr) {
+                NSLog(@"error %@",aErr.description);
+            }
+            break;
+        case ModeStoryBoard:
+            theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF16StringEncoding error:nil];
+            break;
+        case ModeStringFile:
+            theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF8StringEncoding error:nil];
+            if (!theFileString) {
+                theFileString = [NSString stringWithContentsOfFile:theFilePath encoding:NSUTF16StringEncoding error:nil];
+            }
+            break;
+            
+        default:
+            break;
     }
+    
     
     if (!theFileString) {
         [self.waitIndicator stopAnimation:@"Hello"];
@@ -130,7 +95,9 @@ NSString * runCommand(NSString* c) {
 }
 
 - (IBAction)replaceStringClick:(id)sender {
-    
+    if (crntMode == ModeNone) {
+        return;
+    }
     NSArray * otherLangList = [self.otheLangStringList.string componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     if (otherLangList.count != theEnglishLineList.count) {
         NSLog(@"Count missmatch ");
@@ -163,62 +130,78 @@ NSString * runCommand(NSString* c) {
         index++;
     }
     
-   if ([loadedFileExtension isEqualToString:@"storyboard"]) {
-       [self.waitIndicator startAnimation:@"Hello"];
-       dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-           
-           NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
-           [theNewFile writeToFile:theFilePath atomically:YES encoding:NSUTF16StringEncoding error:nil];
-           
-           
-           NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
-           fldrPath = [fldrPath stringByDeletingLastPathComponent];
-           
-           NSString * selLang = self.folderComboBox.stringValue;
-           
-           NSString * destFolder = [fldrPath stringByAppendingPathComponent:selLang];
-           
-           NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
-           destFolder = [destFolder stringByAppendingPathComponent:theFileName];
-           NSString *source = [self.theFileLocation.stringValue stringByDeletingPathExtension];
-           
-           NSString * gnst =[NSString stringWithFormat:ExportToStoryBoardcmd,source,destFolder,source];
-           NSLog(@"the cmd %@",gnst);
-           
-           runCommand(gnst);
-           if (createdFileList) {
-               [createdFileList addObject:[source stringByAppendingPathExtension:@"strings"]];
-           }
-           else{
-               createdFileList =[NSMutableSet setWithArray:@[[source stringByAppendingPathExtension:@"strings"]]];
-           }
-           [self.waitIndicator stopAnimation:@"Hello"];
-           
-       });
-
-   }else{
-       
-       NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
-       fldrPath = [fldrPath stringByDeletingLastPathComponent];
-       
-       NSString * selLang = self.folderComboBox.stringValue;
-       
-       NSString * destFile = [fldrPath stringByAppendingPathComponent:selLang];
-       
-       NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
-       destFile = [[destFile stringByAppendingPathComponent:theFileName] stringByAppendingPathExtension:@"strings"];
-       [theNewFile writeToFile:destFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-       
-       self.theFileLocation.stringValue = @"";
-       self.otheLangStringList.string = @"";
-       self.theEnglishStringList.string = @"";
-       loadedFileExtension =@"";
-   }
-
     
     
     
+    switch (crntMode) {
+        case ModeNone:
+            return;
+            break;
+        case ModeMFiles:
+        {
+            
+            NSString * fldrPath = self.theFileLocation.stringValue;
+            NSString * selLang = self.folderComboBox.stringValue;
+            NSString * destFile = [fldrPath stringByAppendingPathComponent:selLang];
+            destFile = [destFile stringByAppendingPathComponent:@"Localizable.strings"];
+            [theNewFile writeToFile:destFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        }
+
+            break;
+        case ModeStoryBoard:
+        {
+            [self.waitIndicator startAnimation:@"Hello"];
+            dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                
+                NSString * theFilePath = [[self.theFileLocation.stringValue stringByDeletingPathExtension] stringByAppendingPathExtension:@"strings"];
+                [theNewFile writeToFile:theFilePath atomically:YES encoding:NSUTF16StringEncoding error:nil];
+                
+                
+                NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+                fldrPath = [fldrPath stringByDeletingLastPathComponent];
+                
+                NSString * selLang = self.folderComboBox.stringValue;
+                
+                NSString * destFolder = [fldrPath stringByAppendingPathComponent:selLang];
+                
+                NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
+                destFolder = [destFolder stringByAppendingPathComponent:theFileName];
+                NSString *source = [self.theFileLocation.stringValue stringByDeletingPathExtension];
+                
+                NSString * gnst =[NSString stringWithFormat:ExportToStoryBoardcmd,source,destFolder,source];
+                NSLog(@"the cmd %@",gnst);
+                
+                runCommand(gnst);
+                [self.waitIndicator stopAnimation:@"Hello"];
+                
+            });
+        }
+            break;
+        case ModeStringFile:
+        {
+            
+            NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+            fldrPath = [fldrPath stringByDeletingLastPathComponent];
+            
+            NSString * selLang = self.folderComboBox.stringValue;
+            
+            NSString * destFile = [fldrPath stringByAppendingPathComponent:selLang];
+            
+            NSString * theFileName = [[self.theFileLocation.stringValue lastPathComponent] stringByDeletingPathExtension];
+            destFile = [[destFile stringByAppendingPathComponent:theFileName] stringByAppendingPathExtension:@"strings"];
+            [theNewFile writeToFile:destFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        }
+
+            break;
+            
+        default:
+            break;
+    }
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Modified destination !! Please clear press clear button to remove files created!"];
+    [alert runModal];
+
+
 }
 
 - (IBAction)clickedClearFiles:(id)sender {
@@ -230,8 +213,128 @@ NSString * runCommand(NSString* c) {
     self.theFileLocation.stringValue = @"";
     self.otheLangStringList.string = @"";
     self.theEnglishStringList.string = @"";
-    loadedFileExtension =@"";
+    crntMode = ModeNone;
     
+}
+
+- (IBAction)loadFromSBClick:(NSButton *)sender {
+    
+    NSOpenPanel *savePanel=[[NSOpenPanel alloc] init];
+    [savePanel setCanCreateDirectories:NO];
+    [savePanel setCanChooseDirectories:NO];
+    [savePanel setCanChooseFiles:YES];
+    [savePanel setAllowsMultipleSelection:NO];
+    [savePanel setAllowedFileTypes:@[@"storyboard"]];
+    if ( [savePanel runModal] == NSOKButton )
+    {
+        [self.waitIndicator startAnimation:@"Hello"];
+        crntMode = ModeStoryBoard;
+        self.theFileLocation.stringValue=savePanel.URL.path;
+        __block NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+        NSString * theFolder = [ fldrPath lastPathComponent];
+        [self loadTheComboBox];
+        __block NSString * theFile = [self.theFileLocation.stringValue lastPathComponent];
+        theFile = [theFile stringByDeletingPathExtension];
+        fldrPath = [fldrPath stringByAppendingPathComponent:theFolder];
+        theFile = [self.theFileLocation.stringValue stringByDeletingPathExtension];
+        dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            NSString * theGenarateCmd = [NSString stringWithFormat:GenerateStrinFileCmd,theFile,theFile];
+            NSLog(@"%@",theGenarateCmd);
+            runCommand(theGenarateCmd);
+            if (createdFileList) {
+                [createdFileList addObject:[theFile stringByAppendingPathExtension:@"strings"]];
+            }
+            else{
+                createdFileList =[NSMutableSet setWithArray:@[[theFile stringByAppendingPathExtension:@"strings"]]];
+            }
+            [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
+        });
+    }
+
+    
+}
+
+- (IBAction)loadFromFolderClick:(NSButton *)sender {
+    
+    NSOpenPanel *savePanel=[[NSOpenPanel alloc] init];
+    [savePanel setCanCreateDirectories:NO];
+    [savePanel setCanChooseDirectories:YES];
+    [savePanel setCanChooseFiles:NO];
+    [savePanel setAllowsMultipleSelection:NO];
+    if ( [savePanel runModal] == NSOKButton )
+    {
+        [self.waitIndicator startAnimation:@"Hello"];
+        crntMode = ModeMFiles;
+        self.theFileLocation.stringValue=savePanel.URL.path;
+        __block NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+        NSString * theFolder = [ fldrPath lastPathComponent];
+        [self loadTheComboBox];
+        __block NSString * theFile = [self.theFileLocation.stringValue lastPathComponent];
+        theFile = [theFile stringByDeletingPathExtension];
+        fldrPath = [fldrPath stringByAppendingPathComponent:theFolder];
+        theFile = [self.theFileLocation.stringValue stringByDeletingPathExtension];
+        dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            NSString * theGenarateCmd = [NSString stringWithFormat:GenerateStingFromMFiles,theFile,theFile];
+            NSLog(@"%@",theGenarateCmd);
+            runCommand(theGenarateCmd);
+            [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
+        });
+    }
+
+    
+}
+
+- (IBAction)loadFromStringFileClick:(NSButton *)sender {
+    
+    NSOpenPanel *savePanel=[[NSOpenPanel alloc] init];
+    [savePanel setCanCreateDirectories:NO];
+    [savePanel setCanChooseDirectories:NO];
+    [savePanel setCanChooseFiles:YES];
+    [savePanel setAllowsMultipleSelection:NO];
+    [savePanel setAllowedFileTypes:@[@"strings"]];
+    if ([savePanel runModal] == NSOKButton )
+    {
+        crntMode = ModeStringFile;
+        [self.waitIndicator startAnimation:@"Hello"];
+        self.theFileLocation.stringValue=savePanel.URL.path;
+        [self loadTheComboBox];
+        [self performSelectorOnMainThread:@selector(loadEnglishStringsClick:) withObject:nil waitUntilDone:NO];
+    }
+    
+}
+- (void)loadTheComboBox{
+    
+    NSString * fldrPath = [self.theFileLocation.stringValue stringByDeletingLastPathComponent];
+    NSString * theFolder = [ fldrPath lastPathComponent];
+    fldrPath = [fldrPath stringByDeletingLastPathComponent];
+    
+    if (crntMode == ModeMFiles) {
+        fldrPath = self.theFileLocation.stringValue;
+        theFolder = @"en.lproj";
+    }
+   
+    
+    
+    NSMutableArray * tmapArr = [@[] mutableCopy];
+    NSError *error = nil;
+    NSArray *directoryFiles = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:fldrPath error:&error];
+    
+    
+    if(directoryFiles == nil){
+        NSLog(@"%@", [error localizedDescription]);
+        return ;
+    }
+    for (NSString * path in directoryFiles) {
+        if (([path rangeOfString:@".lproj"].location != NSNotFound) && (![path isEqualToString:theFolder])) {
+            [tmapArr addObject:path];
+        }
+    }
+    languageList = [NSArray arrayWithArray:tmapArr];
+    [self.folderComboBox reloadData];
+    if (languageList.count>0) {
+        [self.folderComboBox selectItemAtIndex:0];
+    }
+
 }
 
 #pragma Mark

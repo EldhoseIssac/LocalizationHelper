@@ -7,7 +7,12 @@
 //
 
 #import <Cocoa/Cocoa.h>
-
+typedef enum {
+    ModeNone=0,
+    ModeStoryBoard,
+    ModeMFiles,
+    ModeStringFile
+}ModeOfOperation;
 @interface LHAppDelegate : NSObject <NSApplicationDelegate,NSComboBoxDataSource,NSComboBoxDelegate>{
     NSMutableArray * theEnglishLineList;
     NSMutableArray * theOtherLangLineList;
@@ -16,8 +21,8 @@
     NSPipe * pipe;
     NSArray *languageList;
     __weak NSProgressIndicator *_waitIndicator;
-    NSString * loadedFileExtension;
     NSMutableSet * createdFileList;
+    ModeOfOperation crntMode;
 }
 
 @property (assign) IBOutlet NSWindow *window;
@@ -26,10 +31,13 @@
 @property (unsafe_unretained) IBOutlet NSTextView *otheLangStringList;
 @property (weak) IBOutlet NSComboBox *folderComboBox;
 
-- (IBAction)fileSelector:(id)sender;
+
 - (IBAction)loadEnglishStringsClick:(id)sender;
 - (IBAction)replaceStringClick:(id)sender;
 - (IBAction)clickedClearFiles:(id)sender;
+- (IBAction)loadFromSBClick:(NSButton *)sender;
+- (IBAction)loadFromFolderClick:(NSButton *)sender;
+- (IBAction)loadFromStringFileClick:(NSButton *)sender;
 
 @property (weak) IBOutlet NSProgressIndicator *waitIndicator;
 @end
